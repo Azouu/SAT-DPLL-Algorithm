@@ -35,19 +35,19 @@ def test_consistance(C, S) :
     for s in S :
         affected_variables.append(s[0])
     clauses = copy.deepcopy(C)
-    start_time = time.time()
+    #start_time = time.time()
     for c in clauses :
         for s in S :
             tmp = list(map(lambda x : np.abs(x),c))
             if s[0] in tmp :
                 index = tmp.index(s[0])
                 c[index] = c[index] * s[1]
-        count = sum(not_false(x) if (np.abs(x) in affected_variables) else (x is not None) for x in c)
+        count = sum(not_false(x) if (abs(x) in affected_variables) else (x is not None) for x in c)
         if count == 0 :
-            print("--- %s seconds ---" % (time.time() - start_time))
+            #print("--- %s seconds ---" % (time.time() - start_time))
             consistent = False
             return consistent
-    print("--- %s seconds ---" % (time.time() - start_time))
+    #print("--- %s seconds ---" % (time.time() - start_time))
     return consistent
 
 def next_var_to_set(S, liste_variables) :
