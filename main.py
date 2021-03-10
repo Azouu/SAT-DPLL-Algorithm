@@ -22,39 +22,40 @@ def read_cnf(filename) :
     clauses = np.array(list(map(int,data)))
     clauses = np.ndarray.tolist(clauses.reshape(nb_clauses, clause_length))
     variables = np.ndarray.tolist(np.arange(1,nb_variables+1))
-    #print(clauses)
-    #print(variables)
     return clauses, variables
 
-def not_false(x):
-  return x > 0
-
+def find_value(X, v, clause) :
+    for litteral in clause :
+        if abs(litteral) == X :
+            return v * litteral
+    return None
 def test_consistance(C, S) :
     consistent = True
-    affected_variables = []
-    for s in S :
-        affected_variables.append(s[0])
-    clauses = copy.deepcopy(C)
-    start_time = time.time()
-    for c in clauses :
-        for s in S :
-            tmp = list(map(lambda x : np.abs(x),c))
-            if s[0] in tmp :
-                index = tmp.index(s[0])
-                c[index] = c[index] * s[1]
-        count = sum(not_false(x) if (np.abs(x) in affected_variables) else (x is not None) for x in c)
-        if count == 0 :
-            print("--- %s seconds ---" % (time.time() - start_time))
+    #start_time = time.time()
+    nb_clauses_unitaires = 0
+    i = 0
+    while i < len(C) and consistent :
+        nb_false = 0
+        for affectation in S :
+            X = affectation[0]
+            v = affectation[1]
+            value = find_value(X,v,C[i])
+            if value and value < 0 :
+                nb_false = nb_false + 1
+        if nb_false == len(C[i]):
             consistent = False
-            return consistent
-    print("--- %s seconds ---" % (time.time() - start_time))
-    return consistent
+        elif nb_false == len(C[i]) - 1 :
+            nb_clauses_unitaires = nb_clauses_unitaires + 1
+        i = i + 1
+    #print(time.time() - start_time)
+    return consistent, nb_clauses_unitaires
 
 def next_var_to_set(S, liste_variables) :
     affected_variables = []
     for s in S:
         affected_variables.append(s[0])
-    return [x for x in liste_variables if x not in affected_variables][0]
+    var = [x for x in liste_variables if x not in affected_variables][0]
+    return var
 
 def find_S(variables, clauses) :
     n = len(variables)
@@ -62,7 +63,7 @@ def find_S(variables, clauses) :
     S = []
     nb_echecs = 0
     while not done:
-        if test_consistance(clauses, S):
+        if test_consistance(clauses, S)[0]:
             if len(S) == n:
                 done = True
             else:
@@ -72,8 +73,6 @@ def find_S(variables, clauses) :
             affectation = S.pop()
             while len(S) > 0 and affectation[2] is None:
                 affectation = S.pop()
-
-
             if affectation[2] is not None:
                 S.append((affectation[0], -1, None))
             else:
@@ -84,19 +83,16 @@ def find_S(variables, clauses) :
 
 if __name__ == '__main__':
     clauses, variables = read_cnf('uf20-01.cnf')
-    #c = [[1,-2, 4], [-3,4], [-1,-3]]
+    c = [[1,-2, 4], [-3,4], [-1,-3]]
     #s = [(1,1,-1), (2,+1,-1), (3,-1,None),(4,1,-1)]
-    #s = [(1,1,-1),(2,+1,-1),(3,1,None),(4,1,-1)]
-    #a = test_consistance(c, s)
-    #print(a)
-    # backtrack
-    #variables = [1, 2, 3, 4]
+    s = [(1,1,-1),(2,+1,-1),(3,1, -1)]
+    a = test_consistance(c, s)
+    print(a)
 
     start_time = time.time()
-    print(find_S(variables, clauses))
-    print("--- %s seconds ---" % (time.time() - start_time))
-    #print(clauses)
-    #print(variables)
+    a = find_S(variables, clauses)
+    print(time.time() - start_time)
+    print(a)
     exit(0)
 
 
