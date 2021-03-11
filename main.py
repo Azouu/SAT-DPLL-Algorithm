@@ -4,9 +4,8 @@
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import re
 import numpy as np
-import copy
 import time
-import threading
+
 def read_cnf(filename) :
     with open(filename, "r") as file :
         data = file.read().split()
@@ -18,52 +17,65 @@ def read_cnf(filename) :
         nb_clauses = int(data[1])
         data = data[2:]
         data = list(filter(('0').__ne__,data))[:-1]
-
     clauses = np.array(list(map(int,data)))
     clauses = np.ndarray.tolist(clauses.reshape(nb_clauses, clause_length))
     variables = np.ndarray.tolist(np.arange(1,nb_variables+1))
     return clauses, variables
 
-def find_value(X, v, clause) :
+def find_litteral(X, clause) :
     for litteral in clause :
         if abs(litteral) == X :
-            return v * litteral
+            return litteral
     return None
+
 def test_consistance(C, S) :
     consistent = True
-    #start_time = time.time()
-    nb_clauses_unitaires = 0
+    clauses_unitaires = []
     i = 0
     while i < len(C) and consistent :
         nb_false = 0
+        nb_litteraux = len(C[i])
+        c = None
         for affectation in S :
             X = affectation[0]
             v = affectation[1]
-            value = find_value(X,v,C[i])
-            if value and value < 0 :
-                nb_false = nb_false + 1
-        if nb_false == len(C[i]):
+            litteral = find_litteral(X, C[i])
+            if litteral :
+                if litteral * v < 0 :
+                    nb_false = nb_false + 1
+                else :
+                    c = litteral
+        if nb_false == nb_litteraux:
             consistent = False
-        elif nb_false == len(C[i]) - 1 :
-            nb_clauses_unitaires = nb_clauses_unitaires + 1
+        elif nb_false == nb_litteraux - 1 :
+            if c  :
+                clauses_unitaires.append(c)
         i = i + 1
-    #print(time.time() - start_time)
-    return consistent, nb_clauses_unitaires
+    return consistent, clauses_unitaires
 
 def next_var_to_set(S, liste_variables) :
     affected_variables = []
     for s in S:
         affected_variables.append(s[0])
+
     var = [x for x in liste_variables if x not in affected_variables][0]
     return var
 
-def find_S(variables, clauses) :
+def choix_affectation(X, valeurs) :
+    if len(valeurs) == 0 :
+        return (X, 1, -1)
+    if len(valeurs) == 1 :
+        return (X, valeurs[0], - valeurs[0])
+
+
+def dpll(variables, clauses) :
     n = len(variables)
     done = False
     S = []
     nb_echecs = 0
     while not done:
-        if test_consistance(clauses, S)[0]:
+        res_test_consistance =  test_consistance(clauses, S)
+        if res_test_consistance[0]:
             if len(S) == n:
                 done = True
             else:
@@ -84,13 +96,13 @@ def find_S(variables, clauses) :
 if __name__ == '__main__':
     clauses, variables = read_cnf('uf20-01.cnf')
     c = [[1,-2, 4], [-3,4], [-1,-3]]
-    #s = [(1,1,-1), (2,+1,-1), (3,-1,None),(4,1,-1)]
-    s = [(1,1,-1),(2,+1,-1),(3,1, -1)]
+    s = [(1,1,-1), (2,+1,-1), (3,-1,None),(4,1,-1)]
     a = test_consistance(c, s)
     print(a)
 
     start_time = time.time()
-    a = find_S(variables, clauses)
+    a = dpll(variables, clauses)
+    print(a)
     print(time.time() - start_time)
     print(a)
     exit(0)
