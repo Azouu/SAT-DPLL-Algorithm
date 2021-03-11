@@ -28,90 +28,83 @@ def find_litteral(X, clause) :
             return litteral
     return None
 
-def simplifier_clause(S, clause) :
-    res = []
-    for c in clause :
-        for s in S :
-            if abs(c) == s[0] :
-                val = c * s[1]
-                if val > 0 :
-                    res.append(c)
-    return res
-
 def test_consistance(C, S) :
     consistent = True
     i = 0
+    clauses_unitaires = []
     while i < len(C) and consistent :
-        nb_false = 0
         tmp = C[i].copy()
         for affectation in S :
             X = affectation[0]
             v = affectation[1]
-            litteral = find_litteral(X, C[i])
+            litteral = find_litteral(X, tmp)
             # Si la variable est dans la clause
             if litteral :
                 if litteral * v < 0 :
                     tmp.remove(litteral)
         if len(tmp) == 0 :
             consistent = False
-            return []
+        if len(tmp) == 1 and tmp[0] not in clauses_unitaires  :
+            clauses_unitaires.append(tmp)
         i = i + 1
-    return tmp
+    return consistent, clauses_unitaires
 
-def variables_affectees(S) :
-    variables_affectees = []
-    for affectation in S :
-        variables_affectees.append(affectation[0])
-    return variables_affectees
 
-def choix_variable(variables, S, clauses_pas_affectees_faux) :
-    variables_aff = variables_affectees(S)
-    if len(clauses_pas_affectees_faux) == 1 :
-        for c in clauses_pas_affectees_faux :
-            if abs(c) not in variables_aff :
-                if c * 1 > 0 :
-                    return (abs(c), 1, None)
-                else :
-                    return (abs(c), -1, None)
-    for c in variables :
-        if c not in variables_aff :
-            return (c, 1, -1)
-    return None
+
+def choix_variable(variables, clauses_unitaires) :
+    for c in clauses_unitaires :
+        c = c[0]
+        if abs(c) in variables :
+            if c * 1 > 0 :
+                return (abs(c), 1, None)
+            else :
+                return (abs(c), -1, None)
+    return(variables[0], 1, -1)
 
 
 def dpll(variables, clauses) :
     n = len(variables)
     done = False
     S = []
+    variables_a_affecter = variables.copy()
     nb_echecs = 0
     while not done:
         res_test_consistance =  test_consistance(clauses, S)
-        if len(res_test_consistance) > 0:
+        if res_test_consistance[0]:
             if len(S) == n:
                 done = True
             else:
-                var = choix_variable(variables, S, res_test_consistance)
+                var = choix_variable(variables_a_affecter, res_test_consistance[1])
                 S.append(var)
+                variables_a_affecter.remove(var[0])
         else :
             nb_echecs = nb_echecs + 1
             affectation = S.pop()
+            variables_a_affecter.append(affectation[0])
             while len(S) > 0 and affectation[2] is None:
                 affectation = S.pop()
+                variables_a_affecter.append(affectation[0])
             if affectation[2] is not None:
                 S.append((affectation[0], affectation[1] * (-1), None))
+                variables_a_affecter.remove(affectation[0])
             else:
                 done = True
     print(nb_echecs)
+    S.sort(key=lambda tup: tup[0])
     return S
 
 
 if __name__ == '__main__':
-    clauses, variables = read_cnf('uf20-01.cnf')
-    #c = [[1,-2, 4], [-3,4], [-1,-3]]
-    #s = [(1,1,-1), (2,+1,-1), (3,1,-1)]
+    # TO DO : ADD LITTERAUX PURS
+    # TO DO : ADD MODELES PARTIELS
+    # TO DO : TESTER SI CA MARCHE AVEC 100
+    clauses, variables = read_cnf('uf50-01.cnf')
+    c = [[1,-2, 4], [-3,4], [-1,-3]]
+    #s = [(1,1,-1),(2,1,-1),(3,1), (4,1,-1)]
+    #s = [(1,1,-1), (2,+1,-1), (3,1,None),[4,-1,-1]]
     #a = test_consistance(c, s)
     #print(a)
-
+    #c = [[1,2,-1,3],[-3,2,-1,3]]
     start_time = time.time()
     a = dpll(variables, clauses)
     print("Temps d'execution de dpll : {}".format(time.time() - start_time))
