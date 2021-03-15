@@ -22,6 +22,33 @@ def read_cnf(filename) :
     variables = np.ndarray.tolist(np.arange(1,nb_variables+1))
     return clauses, variables
 
+def read_cnf(filename) :
+    clauses = []
+    with open(filename, "r") as file :
+        for line in file :
+            if '%' in line :
+                break
+            if line.startswith("p") :
+                data = line.split()
+                nb_variables = int(data[2])
+                nb_clauses = int(data[3])
+            elif line[0] != 'c' :
+                data = line.split()
+                data = data[:-1]
+                map_object = map(int,data)
+                data = list(map_object)
+                clauses.append(data)
+    if len(clauses) != nb_clauses :
+        print(len(clauses))
+        print(nb_clauses)
+        print(clauses)
+        raise Exception("File Reading failed : the number of clauses doesn't match")
+    variables = list(np.arange(1,nb_variables+1))
+    return clauses, variables
+
+
+
+
 def find_litteral(X, clause) :
     for litteral in clause :
         if abs(litteral) == X :
@@ -98,7 +125,7 @@ if __name__ == '__main__':
     # TO DO : ADD LITTERAUX PURS
     # TO DO : ADD MODELES PARTIELS
     # TO DO : TESTER SI CA MARCHE AVEC 100
-    clauses, variables = read_cnf('uf50-01.cnf')
+    clauses, variables = read_cnf('uf20-01.cnf')
     c = [[1,-2, 4], [-3,4], [-1,-3]]
     #s = [(1,1,-1),(2,1,-1),(3,1), (4,1,-1)]
     #s = [(1,1,-1), (2,+1,-1), (3,1,None),[4,-1,-1]]
