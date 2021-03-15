@@ -121,12 +121,32 @@ def dpll(variables, clauses) :
     return S
 
 
+def select_pure_litterals(clauses) :
+    flat_clauses = sum(clauses, [])
+    litterals  = sorted(list(set(flat_clauses)), key=abs)
+    pure_litterals = litterals.copy()
+    print(litterals)
+    i = 0
+    while i < len(litterals) - 1 :
+        if litterals[i] ==  abs(litterals[i+1]) :
+            pure_litterals.remove(litterals[i])
+            pure_litterals.remove(litterals[i+1])
+        i = i + 2
+    return pure_litterals
+
+
+
 if __name__ == '__main__':
     # TO DO : ADD LITTERAUX PURS
     # TO DO : ADD MODELES PARTIELS
     # TO DO : TESTER SI CA MARCHE AVEC 100
     clauses, variables = read_cnf('uf20-01.cnf')
     c = [[1,-2, 4], [-3,4], [-1,-3]]
+
+    pure = select_pure_litterals(clauses)
+    print()
+    print(pure)
+
     #s = [(1,1,-1),(2,1,-1),(3,1), (4,1,-1)]
     #s = [(1,1,-1), (2,+1,-1), (3,1,None),[4,-1,-1]]
     #a = test_consistance(c, s)
