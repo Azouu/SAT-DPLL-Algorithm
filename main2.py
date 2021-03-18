@@ -53,17 +53,18 @@ def test_consistance(C, S) :
 
 
 def choisir_triplet(S, variables_a_affecter, clauses_unitaires) :
-    i = 0
     if clauses_unitaires :
-        var = clauses_unitaires.pop()
-        variables_a_affecter.remove(abs(var))
-        if var > 0 :
-            return var, 1, None
-        else :
-            return abs(var), -1, None
+        while clauses_unitaires :
+            var = clauses_unitaires.pop()
+            if -var not in clauses_unitaires :
+                variables_a_affecter.remove(abs(var))
+                if var > 0 :
+                   S.append((var, 1, None))
+                else :
+                    S.append((abs(var), -1, None))
     else :
         var = variables_a_affecter.pop()
-        return var, 1, -1
+        S.append((var, 1, -1))
 
 
 def dpll(variables, clauses) :
@@ -79,8 +80,7 @@ def dpll(variables, clauses) :
             if len(S) == n :
                 done = True
             else :
-                triplet = choisir_triplet(S, variables_restantes, clauses_unitaires)
-                S.append(triplet)
+                choisir_triplet(S, variables_restantes, clauses_unitaires)
         else :
             triplet = S.pop()
             variables_restantes.add(triplet[0])
@@ -97,7 +97,7 @@ def dpll(variables, clauses) :
     return S
 
 if __name__ == '__main__':
-    clauses, variables = read_cnf('uf20-01.cnf')
+    clauses, variables = read_cnf('uuf125-01.cnf-1.txt')
     c = [[1, -2, 4], [-3, 4], [-1, -3]]
     a = dpll([1,2,3,4], c)
     print(a)
