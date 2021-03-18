@@ -7,22 +7,6 @@ import numpy as np
 import time
 
 def read_cnf(filename) :
-    with open(filename, "r") as file :
-        data = file.read().split()
-        index = data.index('length')
-        clause_length = int(data[index+2])
-        index = data.index('cnf')
-        data = data[index+1:]
-        nb_variables = int(data[0])
-        nb_clauses = int(data[1])
-        data = data[2:]
-        data = list(filter(('0').__ne__,data))[:-1]
-    clauses = np.array(list(map(int,data)))
-    clauses = np.ndarray.tolist(clauses.reshape(nb_clauses, clause_length))
-    variables = np.ndarray.tolist(np.arange(1,nb_variables+1))
-    return clauses, variables
-
-def read_cnf(filename) :
     clauses = []
     with open(filename, "r") as file :
         for line in file :
@@ -39,14 +23,9 @@ def read_cnf(filename) :
                 data = list(map_object)
                 clauses.append(data)
     if len(clauses) != nb_clauses :
-        print(len(clauses))
-        print(nb_clauses)
-        print(clauses)
         raise Exception("File Reading failed : the number of clauses doesn't match")
     variables = list(np.arange(1,nb_variables+1))
     return clauses, variables
-
-
 
 
 def find_litteral(X, clause) :
@@ -55,12 +34,14 @@ def find_litteral(X, clause) :
             return litteral
     return None
 
-def test_consistance(C, S) :
+def test_consistance(C, S, unitaires) :
     consistent = True
+    #clauses = set([])
     i = 0
     clauses_unitaires = []
     while i < len(C) and consistent :
         tmp = C[i].copy()
+        #purs = C[i].copy()
         for affectation in S :
             X = affectation[0]
             v = affectation[1]
@@ -71,21 +52,38 @@ def test_consistance(C, S) :
                     tmp.remove(litteral)
         if len(tmp) == 0 :
             consistent = False
+
         if len(tmp) == 1 and tmp[0] not in clauses_unitaires  :
             clauses_unitaires.append(tmp)
+        #else :
+        #    for p in purs :
+        #        if not - p in clauses :
+        #            clauses.add(p)
+        #        else :
+        #            clauses.remove(-p)
         i = i + 1
-    return consistent, clauses_unitaires
+    return consistent, clauses_unitaires, clauses
 
 
-
-def choix_variable(variables, clauses_unitaires) :
+def choix_variable(variables, clauses_unitaires, clauses_simplifiees) :
     for c in clauses_unitaires :
-        c = c[0]
-        if abs(c) in variables :
-            if c * 1 > 0 :
-                return (abs(c), 1, None)
+        tmp = c[0]
+        if abs(tmp) in variables :
+            if tmp * 1 > 0 :
+                return (abs(tmp), 1, None)
             else :
-                return (abs(c), -1, None)
+                return (abs(tmp), -1, None)
+    #pure_litterals = sorted(list(clauses_simplifiees), key=abs)
+    #print(pure_litterals)
+    #for c in pure_litterals:
+    #    print("JE SELECTIONNE")
+    #    print(c)
+    #    if c * 1 > 0:
+    #        print("ALLO")
+    #        return (abs(c), 1, None)
+    #    else:
+    #        return (abs(c), -1, None)
+    #print(variables)
     return(variables[0], 1, -1)
 
 
@@ -93,22 +91,24 @@ def dpll(variables, clauses) :
     n = len(variables)
     done = False
     S = []
+    unitaires = []
     variables_a_affecter = variables.copy()
     nb_echecs = 0
     while not done:
-        res_test_consistance =  test_consistance(clauses, S)
+        res_test_consistance =  test_consistance(clauses, S, unitaires)
         if res_test_consistance[0]:
             if len(S) == n:
                 done = True
             else:
-                var = choix_variable(variables_a_affecter, res_test_consistance[1])
-                S.append(var)
-                variables_a_affecter.remove(var[0])
+                    var = choix_variable(variables_a_affecter, res_test_consistance[1],res_test_consistance[2])
+                    S.append(var)
+                    variables_a_affecter.remove(var[0])
         else :
             nb_echecs = nb_echecs + 1
             affectation = S.pop()
             variables_a_affecter.append(affectation[0])
             while len(S) > 0 and affectation[2] is None:
+                nb_echecs = nb_echecs + 1
                 affectation = S.pop()
                 variables_a_affecter.append(affectation[0])
             if affectation[2] is not None:
@@ -121,21 +121,6 @@ def dpll(variables, clauses) :
     return S
 
 
-def select_pure_litterals(clauses) :
-    flat_clauses = sum(clauses, [])
-    litterals  = sorted(list(set(flat_clauses)), key=abs)
-    pure_litterals = litterals.copy()
-    print(litterals)
-    i = 0
-    while i < len(litterals) - 1 :
-        if litterals[i] ==  abs(litterals[i+1]) :
-            pure_litterals.remove(litterals[i])
-            pure_litterals.remove(litterals[i+1])
-        i = i + 2
-    return pure_litterals
-
-
-
 if __name__ == '__main__':
     # TO DO : ADD LITTERAUX PURS
     # TO DO : ADD MODELES PARTIELS
@@ -143,9 +128,8 @@ if __name__ == '__main__':
     clauses, variables = read_cnf('uf20-01.cnf')
     c = [[1,-2, 4], [-3,4], [-1,-3]]
 
-    pure = select_pure_litterals(clauses)
-    print()
-    print(pure)
+    #pure = select_pure_litterals(c)
+    #print(pure)
 
     #s = [(1,1,-1),(2,1,-1),(3,1), (4,1,-1)]
     #s = [(1,1,-1), (2,+1,-1), (3,1,None),[4,-1,-1]]
