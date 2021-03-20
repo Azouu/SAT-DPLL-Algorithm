@@ -5,6 +5,9 @@ import time
 import operator
 from collections import Counter
 
+modele_partiel = False
+all_solutions = True
+
 def read_cnf(filename) :
     clauses = []
     with open(filename, "r") as file :
@@ -35,22 +38,25 @@ def find_affectation(l, S) :
 def test_consistance(C, S) :
     clauses_unitaires = set()
     clauses_simplifiees = []
+    cpt_true = 0
     for clause in C :
-        clauses_bool = [find_affectation(l,S) for l in clause]
-        if not any(clauses_bool) :
-            nb_not_contradicted = clauses_bool.count(None)
+        clause_bool = [find_affectation(l,S) for l in clause]
+        if not any(clause_bool) :
+            nb_not_contradicted = clause_bool.count(None)
             if nb_not_contradicted == 0 :
                 return False, clauses_unitaires, clauses_simplifiees
             elif nb_not_contradicted == 1 :
-                index = clauses_bool.index(None)
+                index = clause_bool.index(None)
                 clauses_unitaires.add(clause[index])
             else :
-                clauses_simplifiees.append([l for l, bool in zip(clause, clauses_bool) if bool is None])
+                clauses_simplifiees.append([l for l, bool in zip(clause, clause_bool) if bool is None])
+        elif modele_partiel :
+            cpt_true = cpt_true + 1
 
     #verif = [x for x in clauses_unitaires if -x in clauses_unitaires]
     #if verif :
     #    return False, clauses_unitaires, clauses_simplifiees
-    return True, clauses_unitaires, clauses_simplifiees
+    return True, clauses_unitaires, clauses_simplifiees, cpt_true
 
 
 
@@ -65,14 +71,6 @@ def choisir_triplet(S, variables_a_affecter, clauses_unitaires, clauses_simplifi
                 else :
                     S.append((abs(var), -1, None))
     else :
-        # littéraux purs
-        #purs = []
-        #for l in variables_a_affecter :
-        #    neg = any(-l in e for e in clauses_simplifiees)
-        #    pos = any(l in e for e in clauses_simplifiees)
-       #     if not (pos and neg) :
-        #        purs.append(-l if neg else l)
-        #print(purs)
         flat = set([item for sublist in clauses_simplifiees for item in sublist])
         purs = [x for x in flat if -x not in flat]
         if purs :
@@ -80,22 +78,58 @@ def choisir_triplet(S, variables_a_affecter, clauses_unitaires, clauses_simplifi
                 var = purs.pop()
                 variables_a_affecter.remove(abs(var))
                 if var > 0:
-                    S.append((var, 1, None))
+                    S.append((var, 1, -1))
                 else:
-                    S.append((abs(var), -1, None))
+                    S.append((abs(var), -1, 1))
         else:
             dict = {key:0 for key in variables_a_affecter}
             for sublist in clauses_simplifiees :
                 for l in sublist :
                     dict[abs(l)] = dict[abs(l)] + 1/len(sublist)
             var = max(dict, key=dict.get)
-            #print(dict)
             variables_a_affecter.remove(var)
             S.append((var, 1, -1))
 
-
+# TODO Vérifier Modèles partiels
 def dpll(variables, clauses) :
     n = len(variables)
+    done = False
+    S = []
+    variables_restantes = set(variables)
+    nb_erreurs = 0
+    while not done :
+        resultat_test = test_consistance(clauses,S)
+        is_consistent = resultat_test[0]
+        clauses_unitaires = resultat_test[1]
+        if is_consistent :
+            if modele_partiel and resultat_test[3] == len(clauses):
+                    done = True
+            elif len(S) == n :
+                    done = True
+            else :
+                choisir_triplet(S, variables_restantes, clauses_unitaires, resultat_test[2])
+        else :
+            nb_erreurs = nb_erreurs + 1
+            triplet = S.pop()
+            variables_restantes.add(triplet[0])
+            while len(S) > 0 and triplet[2] is None :
+                triplet = S.pop()
+                variables_restantes.add(triplet[0])
+            if triplet[2] is not None :
+                new_triplet = (triplet[0], triplet[2], None)
+                S.append(new_triplet)
+                variables_restantes.remove(new_triplet[0])
+            else :
+                done = True
+    print("Nombre d'erreurs = {}".format(nb_erreurs))
+    S.sort(key=lambda tup: tup[0])
+    print(S)
+    return S
+
+
+def dpll_all_solutions(variables, clauses) :
+    n = len(variables)
+    nb_erreurs = 0
     done = False
     S = []
     variables_restantes = set(variables)
@@ -105,10 +139,25 @@ def dpll(variables, clauses) :
         clauses_unitaires = resultat_test[1]
         if is_consistent :
             if len(S) == n :
-                done = True
+                resultat = S.copy()
+                #print(resultat)
+                resultat.sort(key=lambda tup: tup[0])
+                print(resultat)
+                triplet = S.pop()
+                variables_restantes.add(triplet[0])
+                while len(S) > 0 and triplet[2] is None:
+                    triplet = S.pop()
+                    variables_restantes.add(triplet[0])
+                if triplet[2] is not None:
+                    new_triplet = (triplet[0], triplet[2], None)
+                    S.append(new_triplet)
+                    variables_restantes.remove(new_triplet[0])
+                else:
+                    done=True
             else :
                 choisir_triplet(S, variables_restantes, clauses_unitaires, resultat_test[2])
         else :
+            nb_erreurs = nb_erreurs + 1
             triplet = S.pop()
             variables_restantes.add(triplet[0])
             while len(S) > 0 and triplet[2] is None :
@@ -121,19 +170,19 @@ def dpll(variables, clauses) :
             else :
                 done = True
     S.sort(key=lambda tup: tup[0])
+    print("Nombre d'erreurs : {}".format(nb_erreurs))
     return S
 
+
 if __name__ == '__main__':
-    clauses, variables = read_cnf('uuf125-01.cnf-1.txt')
+    clauses, variables = read_cnf('jnh1.cnf.txt')
     c = [[1, -2, 4], [-3, 4], [-1, -3]]
     #print(test_consistance(c,[(1, -1, None), (2, 1, -1), (3, 1, -1), (4, 1, None)]))
-    a = dpll([1,2,3,4], c)
-    print(a)
+    #a = dpll([1,2,3,4], c)
+    #print(a)
     start_time = time.time()
     S = dpll(variables, clauses)
     print("Temps d'execution de dpll : {}".format(time.time() - start_time))
-    print(S)
-    #print(test_consistance(clauses,S))
     exit(0)
 
 
